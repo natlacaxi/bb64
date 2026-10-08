@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Encodeur Base64</title>
+<title>Encodeur &amp; Lecteur Base64</title>
 <style>
 :root{--bg:#f6f7fb;--card:#fff;--text:#1b1f2a;--muted:#667085;--border:#e1e4ec;--accent:#5b5bf0;--accent-t:#fff;--ok:#12a150;--err:#d92d20;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -15,9 +15,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 main{max-width:860px;margin:0 auto;padding:20px 16px 48px}
 h1{font-size:1.5rem;margin:8px 0 4px}
 .sub{color:var(--muted);margin:0 0 18px;font-size:.95rem}
-.tabs{display:flex;gap:6px;margin-bottom:14px}
-.tab{flex:1;padding:10px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;font-size:.95rem;cursor:pointer}
-.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-t);border-color:var(--accent);font-weight:600}
+h2{font-size:1.1rem;margin:26px 0 10px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
 .drop{border:2px dashed var(--border);border-radius:12px;padding:34px 16px;text-align:center;cursor:pointer;transition:.15s}
 .drop.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
@@ -44,15 +42,11 @@ label.l{font-size:.85rem;color:var(--muted)}
 </head>
 <body>
 <main>
-  <h1>Encodeur Base64</h1>
+  <h1>Encodeur &amp; Lecteur Base64</h1>
   <p class="sub">Image, vidéo, son, PDF… n'importe quel fichier. Tout reste dans ton navigateur, rien n'est envoyé.</p>
 
-  <div class="tabs" role="tablist">
-    <button class="tab" role="tab" id="t-enc" aria-selected="true">Encoder</button>
-    <button class="tab" role="tab" id="t-dec" aria-selected="false">Décoder</button>
-  </div>
-
   <section id="p-enc">
+    <h2>1. Encodeur</h2>
     <div class="card">
       <div class="drop" id="drop" tabindex="0">
         <b>Glisse un fichier ici</b>
@@ -73,6 +67,7 @@ label.l{font-size:.85rem;color:var(--muted)}
           <option value="css">CSS url()</option>
         </select>
         <button class="btn primary" id="copy">Copier</button>
+        <button class="btn" id="toPlayer">Lire dans le lecteur ↓</button>
       </div>
       <textarea id="out" readonly spellcheck="false"></textarea>
       <div class="msg" id="msgEnc"></div>
@@ -80,7 +75,8 @@ label.l{font-size:.85rem;color:var(--muted)}
     </div>
   </section>
 
-  <section id="p-dec" class="hide">
+  <section id="p-dec">
+    <h2>2. Lecteur Base64</h2>
     <div class="card">
       <label class="l" for="in">Colle du Base64 (brut ou data URI)</label>
       <textarea id="in" placeholder="data:image/png;base64,iVBORw0KGgo…" spellcheck="false"></textarea>
@@ -94,7 +90,7 @@ label.l{font-size:.85rem;color:var(--muted)}
           <option value="video/mp4">MP4</option><option value="video/webm">WebM</option>
           <option value="application/pdf">PDF</option>
         </select>
-        <button class="btn primary" id="decBtn">Décoder</button>
+        <button class="btn primary" id="decBtn">Lire</button>
       </div>
       <div class="msg" id="msgDec"></div>
       <div class="preview" id="prevDec"></div>
@@ -109,14 +105,6 @@ label.l{font-size:.85rem;color:var(--muted)}
   const MAX_SHOW=300000;
 
   const fmtSize=n=>n<1024?n+" o":n<1048576?(n/1024).toFixed(1)+" Ko":n<1073741824?(n/1048576).toFixed(2)+" Mo":(n/1073741824).toFixed(2)+" Go";
-
-  // Onglets
-  function tab(which){
-    const e=which==="enc";
-    $("p-enc").classList.toggle("hide",!e);$("p-dec").classList.toggle("hide",e);
-    $("t-enc").setAttribute("aria-selected",e);$("t-dec").setAttribute("aria-selected",!e);
-  }
-  $("t-enc").onclick=()=>tab("enc");$("t-dec").onclick=()=>tab("dec");
 
   function mediaEl(m,src){
     let el;
@@ -206,7 +194,14 @@ label.l{font-size:.85rem;color:var(--muted)}
     msg.className="msg ok";msg.textContent="Copié ("+t.length.toLocaleString("fr")+" caractères)";
   };
 
-  // Décodage
+  $("toPlayer").onclick=()=>{
+    $("in").value="data:"+mime+";base64,"+b64;
+    $("mime").value="auto";
+    $("decBtn").click();
+    $("p-dec").scrollIntoView({behavior:"smooth",block:"start"});
+  };
+
+  // Lecteur
   function sniff(b){
     const h=(i,...a)=>a.every((v,k)=>b[i+k]===v);
     if(h(0,0x89,0x50,0x4E,0x47))return"image/png";
