@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Encodeur Base64</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--text:#1b1f2a;--muted:#667085;--border:#e1e4ec;--accent:#5b5bf0;--accent-t:#fff;--ok:#12a150;--err:#d92d20;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1117;--card:#181b24;--text:#eceef4;--muted:#9aa1b2;--border:#2a2f3c;--accent:#7c7cff;--accent-t:#0f1117;--ok:#3ddc84;--err:#ff6b60}}
+:root[data-theme="dark"]{--bg:#0f1117;--card:#181b24;--text:#eceef4;--muted:#9aa1b2;--border:#2a2f3c;--accent:#7c7cff;--accent-t:#0f1117;--ok:#3ddc84;--err:#ff6b60}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+main{max-width:860px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.5rem;margin:8px 0 4px}
+.sub{color:var(--muted);margin:0 0 18px;font-size:.95rem}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tab{flex:1;padding:10px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;font-size:.95rem;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-t);border-color:var(--accent);font-weight:600}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
+.drop{border:2px dashed var(--border);border-radius:12px;padding:34px 16px;text-align:center;cursor:pointer;transition:.15s}
+.drop.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.drop b{display:block;font-size:1.05rem;margin-bottom:4px}
+.drop span{color:var(--muted);font-size:.9rem}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:4px}
+.meta div{background:var(--bg);border-radius:10px;padding:8px 10px;min-width:0}
+.meta small{display:block;color:var(--muted);font-size:.75rem}
+.meta strong{font-size:.9rem;word-break:break-all}
+select,button.btn{font:inherit;padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-t);border-color:var(--accent);font-weight:600}
+textarea{width:100%;min-height:170px;resize:vertical;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);word-break:break-all}
+.preview{margin-top:12px;text-align:center}
+.preview img,.preview video{max-width:100%;max-height:360px;border-radius:10px}
+.preview audio{width:100%}
+.bar{height:6px;background:var(--border);border-radius:99px;overflow:hidden;margin-top:12px;display:none}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .1s}
+.msg{font-size:.88rem;margin-top:8px;min-height:1.2em;color:var(--muted)}
+.msg.ok{color:var(--ok)}.msg.err{color:var(--err)}
+.hide{display:none}
+label.l{font-size:.85rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Encodeur Base64</h1>
+  <p class="sub">Image, vidéo, son, PDF… n'importe quel fichier. Tout reste dans ton navigateur, rien n'est envoyé.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="t-enc" aria-selected="true">Encoder</button>
+    <button class="tab" role="tab" id="t-dec" aria-selected="false">Décoder</button>
+  </div>
+
+  <section id="p-enc">
+    <div class="card">
+      <div class="drop" id="drop" tabindex="0">
+        <b>Glisse un fichier ici</b>
+        <span>ou clique pour choisir (image, vidéo, audio, PDF, autre)</span>
+        <input type="file" id="file" class="hide">
+      </div>
+      <div class="bar" id="bar"><i id="barI"></i></div>
+    </div>
+
+    <div class="card hide" id="resEnc">
+      <div class="meta" id="meta"></div>
+      <div class="row" style="margin:14px 0 8px">
+        <label class="l" for="fmt">Format de sortie</label>
+        <select id="fmt">
+          <option value="raw">Base64 brut</option>
+          <option value="uri">Data URI</option>
+          <option value="html">Balise HTML</option>
+          <option value="css">CSS url()</option>
+        </select>
+        <button class="btn primary" id="copy">Copier</button>
+      </div>
+      <textarea id="out" readonly spellcheck="false"></textarea>
+      <div class="msg" id="msgEnc"></div>
+      <div class="preview" id="prevEnc"></div>
+    </div>
+  </section>
+
+  <section id="p-dec" class="hide">
+    <div class="card">
+      <label class="l" for="in">Colle du Base64 (brut ou data URI)</label>
+      <textarea id="in" placeholder="data:image/png;base64,iVBORw0KGgo…" spellcheck="false"></textarea>
+      <div class="row" style="margin-top:10px">
+        <label class="l" for="mime">Type</label>
+        <select id="mime">
+          <option value="auto">Détection auto</option>
+          <option value="image/png">PNG</option><option value="image/jpeg">JPEG</option>
+          <option value="image/gif">GIF</option><option value="image/webp">WebP</option>
+          <option value="audio/mpeg">MP3</option><option value="audio/wav">WAV</option><option value="audio/ogg">OGG</option>
+          <option value="video/mp4">MP4</option><option value="video/webm">WebM</option>
+          <option value="application/pdf">PDF</option>
+        </select>
+        <button class="btn primary" id="decBtn">Décoder</button>
+      </div>
+      <div class="msg" id="msgDec"></div>
+      <div class="preview" id="prevDec"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  let b64="", mime="", fname="", url=null;
+  const MAX_SHOW=300000;
+
+  const fmtSize=n=>n<1024?n+" o":n<1048576?(n/1024).toFixed(1)+" Ko":n<1073741824?(n/1048576).toFixed(2)+" Mo":(n/1073741824).toFixed(2)+" Go";
+
+  // Onglets
+  function tab(which){
+    const e=which==="enc";
+    $("p-enc").classList.toggle("hide",!e);$("p-dec").classList.toggle("hide",e);
+    $("t-enc").setAttribute("aria-selected",e);$("t-dec").setAttribute("aria-selected",!e);
+  }
+  $("t-enc").onclick=()=>tab("enc");$("t-dec").onclick=()=>tab("dec");
+
+  function mediaEl(m,src){
+    let el;
+    if(m.startsWith("image/")){el=document.createElement("img");}
+    else if(m.startsWith("video/")){el=document.createElement("video");el.controls=true;}
+    else if(m.startsWith("audio/")){el=document.createElement("audio");el.controls=true;}
+    else if(m==="application/pdf"){el=document.createElement("embed");el.type=m;el.style.cssText="width:100%;height:420px;border-radius:10px";}
+    else return null;
+    el.src=src;return el;
+  }
+
+  function render(){
+    if(!b64)return;
+    const f=$("fmt").value, uri="data:"+mime+";base64,"+b64;
+    let s=b64;
+    if(f==="uri")s=uri;
+    else if(f==="css")s="url('"+uri+"')";
+    else if(f==="html"){
+      if(mime.startsWith("image/"))s='<img src="'+uri+'" alt="">';
+      else if(mime.startsWith("video/"))s='<video controls src="'+uri+'"></video>';
+      else if(mime.startsWith("audio/"))s='<audio controls src="'+uri+'"></audio>';
+      else s='<a href="'+uri+'" download="'+fname+'">'+fname+'</a>';
+    }
+    $("out").value=s.length>MAX_SHOW?s.slice(0,MAX_SHOW):s;
+    $("out").dataset.full=f;
+    $("msgEnc").className="msg";
+    $("msgEnc").textContent=s.length>MAX_SHOW?"Aperçu tronqué ("+MAX_SHOW.toLocaleString("fr")+" caractères affichés sur "+s.length.toLocaleString("fr")+"). Le bouton Copier copie tout.":"";
+  }
+  function current(){
+    const f=$("fmt").value, uri="data:"+mime+";base64,"+b64;
+    if(f==="uri")return uri;
+    if(f==="css")return "url('"+uri+"')";
+    if(f==="html"){
+      if(mime.startsWith("image/"))return '<img src="'+uri+'" alt="">';
+      if(mime.startsWith("video/"))return '<video controls src="'+uri+'"></video>';
+      if(mime.startsWith("audio/"))return '<audio controls src="'+uri+'"></audio>';
+      return '<a href="'+uri+'" download="'+fname+'">'+fname+'</a>';
+    }
+    return b64;
+  }
+
+  function encode(file){
+    if(!file)return;
+    fname=file.name;mime=file.type||"application/octet-stream";
+    const bar=$("bar"),bi=$("barI");bar.style.display="block";bi.style.width="0";
+    const r=new FileReader();
+    r.onprogress=e=>{if(e.lengthComputable)bi.style.width=(e.loaded/e.total*100)+"%"};
+    r.onerror=()=>{bar.style.display="none";alert("Lecture du fichier impossible.")};
+    r.onload=()=>{
+      bi.style.width="100%";setTimeout(()=>bar.style.display="none",300);
+      const res=r.result, i=res.indexOf(",");
+      b64=res.slice(i+1);
+      $("resEnc").classList.remove("hide");
+      const m=$("meta");
+      m.innerHTML="";
+      [["Nom",file.name],["Type",mime],["Taille d'origine",fmtSize(file.size)],["Taille Base64",fmtSize(b64.length)]].forEach(([k,v])=>{
+        const d=document.createElement("div");d.innerHTML="<small></small><strong></strong>";
+        d.firstChild.textContent=k;d.lastChild.textContent=v;m.appendChild(d);
+      });
+      render();
+      const p=$("prevEnc");p.innerHTML="";
+      if(url)URL.revokeObjectURL(url);
+      url=URL.createObjectURL(file);
+      const el=mediaEl(mime,url);if(el)p.appendChild(el);
+    };
+    r.readAsDataURL(file);
+  }
+
+  const drop=$("drop"),inp=$("file");
+  drop.onclick=()=>inp.click();
+  drop.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();inp.click()}};
+  inp.onchange=()=>encode(inp.files[0]);
+  ["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over")}));
+  ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over")}));
+  drop.addEventListener("drop",e=>encode(e.dataTransfer.files[0]));
+  $("fmt").onchange=render;
+
+  $("copy").onclick=async()=>{
+    const t=current(), msg=$("msgEnc");
+    try{await navigator.clipboard.writeText(t);}
+    catch(e){
+      const ta=document.createElement("textarea");ta.value=t;ta.style.position="fixed";ta.style.opacity="0";
+      document.body.appendChild(ta);ta.select();
+      try{document.execCommand("copy")}catch(_){}
+      ta.remove();
+    }
+    msg.className="msg ok";msg.textContent="Copié ("+t.length.toLocaleString("fr")+" caractères)";
+  };
+
+  // Décodage
+  function sniff(b){
+    const h=(i,...a)=>a.every((v,k)=>b[i+k]===v);
+    if(h(0,0x89,0x50,0x4E,0x47))return"image/png";
+    if(h(0,0xFF,0xD8,0xFF))return"image/jpeg";
+    if(h(0,0x47,0x49,0x46))return"image/gif";
+    if(h(0,0x52,0x49,0x46,0x46)&&h(8,0x57,0x45,0x42,0x50))return"image/webp";
+    if(h(0,0x52,0x49,0x46,0x46)&&h(8,0x57,0x41,0x56,0x45))return"audio/wav";
+    if(h(0,0x25,0x50,0x44,0x46))return"application/pdf";
+    if(h(0,0x49,0x44,0x33)||h(0,0xFF,0xFB))return"audio/mpeg";
+    if(h(0,0x4F,0x67,0x67,0x53))return"audio/ogg";
+    if(h(4,0x66,0x74,0x79,0x70))return"video/mp4";
+    if(h(0,0x1A,0x45,0xDF,0xA3))return"video/webm";
+    return"application/octet-stream";
+  }
+  let durl=null;
+  $("decBtn").onclick=()=>{
+    const msg=$("msgDec"),p=$("prevDec");p.innerHTML="";msg.className="msg";msg.textContent="";
+    let s=$("in").value.trim(),m=$("mime").value;
+    if(!s){msg.className="msg err";msg.textContent="Colle du Base64 d'abord.";return}
+    const mt=s.match(/^data:([^;,]+)?(;[^,]*)?,/i);
+    if(mt){if(m==="auto"&&mt[1])m=mt[1];s=s.slice(mt[0].length)}
+    s=s.replace(/\s+/g,"").replace(/-/g,"+").replace(/_/g,"/");
+    while(s.length%4)s+="=";
+    let bin;
+    try{bin=atob(s)}catch(e){msg.className="msg err";msg.textContent="Base64 invalide.";return}
+    const bytes=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+    if(m==="auto")m=sniff(bytes);
+    if(durl)URL.revokeObjectURL(durl);
+    durl=URL.createObjectURL(new Blob([bytes],{type:m}));
+    msg.className="msg ok";msg.textContent="Décodé : "+fmtSize(bytes.length)+" · "+m;
+    const el=mediaEl(m,durl);
+    if(el)p.appendChild(el);
+    else{msg.textContent+=" · pas d'aperçu pour ce type";}
+  };
+})();
+</script>
+</body>
+</html>
